@@ -33,7 +33,7 @@
         </v-card>
       </v-col>
       <v-col cols="12" md="4">
-        <v-card class="pa-3" @click="$router.push('/fio/products')">
+        <v-card class="pa-3" @click="$router.push('/fio/fio_table')">
           <v-card-title>Fio Transactions</v-card-title>
           <v-card-text>Check financial transactions</v-card-text>
         </v-card>

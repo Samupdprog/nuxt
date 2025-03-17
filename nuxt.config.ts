@@ -1,9 +1,13 @@
 export default defineNuxtConfig({
   modules: ['@pinia/nuxt'],
-  css: ['vuetify/styles', '@mdi/font/css/materialdesignicons.css'],
+  css: [
+    'devextreme/dist/css/dx.light.css',
+    'vuetify/styles', 
+    '@mdi/font/css/materialdesignicons.css'
+  ],
 
   build: {
-    transpile: ['vuetify']
+    transpile: ['vuetify', 'devextreme-vue']
   },
 
   vite: {
@@ -13,4 +17,4 @@ export default defineNuxtConfig({
   },
 
   compatibilityDate: '2025-03-12'
-})
+});

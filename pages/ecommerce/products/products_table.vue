@@ -1,185 +1,170 @@
-<script setup>
-definePageMeta({
-  layout: "dashboard",
-});
+<template>
+  <div class="products-container">
+    <DxDataGrid
+      :data-source="products"
+      :show-borders="true"
+      key-expr="product_id"
+      class="products-table"
+      :allow-column-reordering="true"
+      :allow-column-resizing="true"
+      :row-alternation-enabled="true"
+    >
+      <!-- Image Column -->
+      <DxColumn data-field="imageUrl" caption="Image" width="100" alignment="center" cell-template="imageTemplate" />
+      
+      <!-- Product Code -->
+      <DxColumn data-field="code" caption="Code" width="120" alignment="center" />
+      
+      <!-- Product ID -->
+      <DxColumn data-field="product_id" caption="Product ID" width="120" alignment="center" />
+      
+      <!-- Name (Editable) -->
+      <DxColumn data-field="name" caption="Name" width="200" alignment="left" />
+      
+      <!-- SEO URL -->
+      <DxColumn data-field="seo_url" caption="SEO URL" width="200" alignment="left" />
+      
+      <!-- SEO Title (Editable) -->
+      <DxColumn data-field="seo_title" caption="SEO Title" width="200" alignment="left" />
+      
+      <!-- SEO Description (Editable) -->
+      <DxColumn data-field="seo_description" caption="SEO Description" width="300" alignment="left" />
 
+      <!-- Actions -->
+      <DxColumn caption="Actions" width="200" cell-template="actionsTemplate" alignment="center" />
+
+      <!-- Image Template -->
+      <template #imageTemplate="{ data }">
+        <img :src="data.value || 'https://via.placeholder.com/50'" class="product-image" />
+      </template>
+
+      <!-- Actions Template -->
+      <template #actionsTemplate="{ data }">
+        <div class="actions">
+          <DxButton text="View" type="normal" styling-mode="outlined" @click="viewProduct(data.data)" />
+          <DxButton v-if="editMode" text="Save" type="success" styling-mode="contained" class="ml-2" @click="editProduct(data.data)" />
+        </div>
+      </template>
+
+      <DxFilterRow :visible="true" />
+      <DxHeaderFilter :visible="true" />
+      <DxSearchPanel :visible="true" :highlight-case-sensitive="false" />
+      <DxColumnChooser :enabled="true" />
+      <DxSelection mode="multiple" />
+      <DxPaging :page-size="10" />
+      <DxPager :show-page-size-selector="true" :allowed-page-sizes="[5, 10, 20]" />
+    </DxDataGrid>
+  </div>
+</template>
+
+<script>
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
+import {
+  DxDataGrid,
+  DxColumn,
+  DxPaging,
+  DxPager,
+  DxFilterRow,
+  DxHeaderFilter,
+  DxSearchPanel,
+  DxColumnChooser,
+  DxSelection,
+} from "devextreme-vue/data-grid";
+import { DxButton } from "devextreme-vue/button";
 
-const router = useRouter();
-const products = ref([]);
-const editMode = ref(false);
-const filters = ref({
-  code: "",
-  name: "",
-});
+export default {
+  components: {
+    DxDataGrid,
+    DxColumn,
+    DxPaging,
+    DxPager,
+    DxFilterRow,
+    DxHeaderFilter,
+    DxSearchPanel,
+    DxColumnChooser,
+    DxSelection,
+    DxButton,
+  },
+  setup() {
+    const router = useRouter();
+    const products = ref([]);
+    const editMode = ref(false);
 
-const headers = [
-  { text: "Code", value: "code" },
-  { text: "Product ID", value: "product_id" },
-  { text: "Name", value: "name" },
-  { text: "SEO URL", value: "seo_url" },
-  { text: "SEO Title", value: "seo_title" },
-  { text: "SEO Description", value: "seo_description" },
-  { text: "Actions", value: "actions" },
-];
-
-const fetchProducts = async () => {
-  try {
-    const response = await fetch("http://localhost:1880/get-all-products", {
-      method: "GET",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch("http://localhost:1880/get-all-products");
+        if (!response.ok) throw new Error("Error retrieving products");
+        const data = await response.json();
+        products.value = Array.isArray(data)
+          ? data.map((product) => ({
+              ...product,
+              imageUrl: product.imageUrl || "https://via.placeholder.com/50",
+            }))
+          : [];
+      } catch (error) {
+        console.error("Error fetching products:", error);
       }
-    });
-    if (!response.ok) throw new Error("Error retrieving products");
-    const data = await response.json();
-    // Suponemos que la respuesta es un array de objetos
-    products.value = Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Error fetching products:", error);
-  }
+    };
+
+    const editProduct = async (product) => {
+      try {
+        const response = await fetch("http://localhost:1880/update-product", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(product),
+        });
+        if (!response.ok) throw new Error("Error updating product");
+        const result = await response.json();
+        console.log("Product updated:", result);
+      } catch (error) {
+        console.error("Error updating product:", error);
+      }
+    };
+
+    const viewProduct = (product) => {
+      router.push(`/ecommerce/products/${product.code}`);
+    };
+
+    onMounted(fetchProducts);
+
+    return {
+      products,
+      editMode,
+      fetchProducts,
+      editProduct,
+      viewProduct,
+    };
+  },
 };
-
-const editProduct = async (product) => {
-  try {
-    const response = await fetch("http://localhost:1880/update-product", {
-      method: "POST",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(product)
-    });
-    if (!response.ok) throw new Error("Error updating product");
-    const result = await response.json();
-    console.log("Product updated:", result);
-  } catch (error) {
-    console.error("Error updating product:", error);
-  }
-};
-
-const filteredProducts = computed(() => {
-  return products.value.filter((product) => {
-    return (
-      (!filters.value.code ||
-        product.code.toString().includes(filters.value.code)) &&
-      (!filters.value.name ||
-        product.name.toLowerCase().includes(filters.value.name.toLowerCase()))
-    );
-  });
-});
-
-const viewProduct = (product) => {
-  router.push(`/ecommerce/products/${product.code}`);
-};
-
-onMounted(fetchProducts);
 </script>
 
+<style scoped>
+.products-container {
+  padding: 20px;
+  max-width: 100%;
+}
 
-<template>
-  <v-container fluid>
-    <v-card elevation="10" class="pa-5">
-      <v-card-title class="d-flex justify-space-between align-center">
-        <span class="text-h5">Product List</span>
-        <v-btn color="info" @click="$router.push('./config')">
-          <i class="bi bi-gear"></i> API Configuration
-        </v-btn>
-      </v-card-title>
+.products-table {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+}
 
-      <!-- Filtros -->
-      <v-row class="mb-4">
-        <v-col cols="12" md="3">
-          <v-text-field v-model="filters.code" label="Filter by Code" clearable></v-text-field>
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-text-field v-model="filters.name" label="Filter by Name" clearable></v-text-field>
-        </v-col>
-        <v-col cols="12" md="3" class="d-flex align-center">
-          <v-btn color="primary" class="mr-2" @click="fetchProducts">Refresh</v-btn>
-          <v-btn color="secondary" @click="filters = { code: '', name: '' }">Reset</v-btn>
-        </v-col>
-      </v-row>
+.product-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+}
 
-      <v-switch v-model="editMode" label="Edit Mode" color="primary" class="mb-3"></v-switch>
-
-      <v-data-table
-        :headers="headers"
-        :items="filteredProducts"
-        item-value="code"
-        class="elevation-2"
-        dense
-        disable-pagination
-      >
-        <!-- Code -->
-        <template v-slot:item.code="{ item }">
-          {{ item.code }}
-        </template>
-
-        <!-- Product ID -->
-        <template v-slot:item.product_id="{ item }">
-          {{ item.product_id }}
-        </template>
-
-        <!-- Name -->
-        <template v-slot:item.name="{ item }">
-          <v-text-field
-            v-if="editMode"
-            v-model="item.name"
-            dense
-            solo
-            hide-details
-          ></v-text-field>
-          <span v-else>{{ item.name }}</span>
-        </template>
-
-        <!-- SEO URL -->
-        <template v-slot:item.seo_url="{ item }">
-          <a :href="item.seo_url" target="_blank">{{ item.seo_url }}</a>
-        </template>
-
-        <!-- SEO Title -->
-        <template v-slot:item.seo_title="{ item }">
-          <v-text-field
-            v-if="editMode"
-            v-model="item.seo_title"
-            dense
-            solo
-            hide-details
-          ></v-text-field>
-          <span v-else>{{ item.seo_title }}</span>
-        </template>
-
-        <!-- SEO Description -->
-        <template v-slot:item.seo_description="{ item }">
-          <v-text-field
-            v-if="editMode"
-            v-model="item.seo_description"
-            dense
-            solo
-            hide-details
-          ></v-text-field>
-          <span v-else>{{ item.seo_description }}</span>
-        </template>
-
-        <!-- Acciones -->
-        <template v-slot:item.actions="{ item }">
-          <v-btn variant="outlined" color="primary" size="small" @click="viewProduct(item)">
-            <i class="bi bi-eye"></i> View
-          </v-btn>
-          <v-btn
-            v-if="editMode"
-            color="success"
-            size="small"
-            class="ml-2"
-            @click="editProduct(item)"
-          >
-            <i class="bi bi-pencil"></i> Save
-          </v-btn>
-        </template>
-      </v-data-table>
-    </v-card>
-  </v-container>
-</template>
+.actions {
+  display: flex;
+  gap: 10px;
+}
+</style>

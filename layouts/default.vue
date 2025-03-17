@@ -1,6 +1,7 @@
 <template>
   <v-container>
-    <h1>Layout Default</h1>
+    <h1>Table</h1>
     <slot />
   </v-container>
 </template>
+
